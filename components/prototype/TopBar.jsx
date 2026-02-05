@@ -2,9 +2,8 @@
 
 import React from "react";
 import { Backpack } from "lucide-react";
-import { routes } from "../../lib/prototype/routes";
 
-export function TopBar({ onGoHome, route, mode }) {
+export function TopBar({ onGoHome }) {
   return (
     <div className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
@@ -18,32 +17,12 @@ export function TopBar({ onGoHome, route, mode }) {
           </div>
           <div className="text-left">
             <div className="text-sm font-semibold leading-none">AdventureBag</div>
-            <div className="text-xs text-muted-foreground">Student training prototype</div>
+            <div className="text-xs text-black/50">Student training prototype</div>
           </div>
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:block text-xs text-muted-foreground">
-            {mode === "wizard" ? "Student wizard" : "Shop tour"} ·{" "}
-            {route === routes.welcome
-              ? "Welcome"
-              : route === routes.landing
-                ? "Landing"
-                : route === routes.search
-                  ? "Search"
-                  : route === routes.details
-                    ? "Details"
-                    : route === routes.checkout
-                      ? "Checkout"
-                      : route === routes.thankyou
-                        ? "Thank you"
-                        : route === routes.abtest
-                          ? "A/B test"
-                          : route === routes.running
-                            ? "Running"
-                            : "Results"}
-          </div>
-        </div>
+        {/* Right side intentionally empty: removed Shop Tour results */}
+        <div className="flex items-center gap-2"></div>
       </div>
     </div>
   );

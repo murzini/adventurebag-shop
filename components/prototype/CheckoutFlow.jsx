@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, ChevronLeft, CreditCard, Lock, Smartphone } from "lucide-react";
 import { Button } from "../ui/button";
@@ -32,12 +32,54 @@ export function CheckoutFlow({ item, step, setStep, onStep, onBackToDetails, onF
   const [delivery, setDelivery] = useState("novaPoshta");
   const [payment, setPayment] = useState("wire");
   const [email, setEmail] = useState("");
+  const [card, setCard] = useState({ number: "", expiry: "", cvc: "", name: "" });
+
+  // Backpack image in checkout can come from catalog items (variation images). Fallback to base id.
+  const heroSrc = useMemo(() => {
+    if (!item) return null;
+    if (item.imageUrl) return item.imageUrl;
+    const baseId = item.baseId || item.id;
+    if (!baseId) return null;
+    return `/backpacks/${baseId}.jpg`;
+  }, [item]);
 
   const deliveryFee =
     delivery === "novaPoshta" ? FEES.novaPoshta : delivery === "courierKyiv" ? FEES.courierKyiv : FEES.pickup;
   const payFee = payment === "card" ? FEES.cardExtra : payment === "gpay" ? FEES.gpayExtra : 0;
   const base = item ? item.price : 0;
   const total = (base + deliveryFee + payFee).toFixed(2);
+
+  // Prevent any selectable-row click handler from stealing focus from text inputs.
+  // Some browsers behave poorly if inputs live near/inside clickable cards.
+  // These guards prevent any ancestor "select row" handler from hijacking focus.
+  const inputGuards = {
+    onPointerDown: (e) => e.stopPropagation(),
+    onMouseDown: (e) => e.stopPropagation(),
+    onClick: (e) => e.stopPropagation(),
+    onFocus: (e) => e.stopPropagation(),
+    onBlur: (e) => e.stopPropagation(),
+    onKeyDown: (e) => e.stopPropagation(),
+    onKeyUp: (e) => e.stopPropagation(),
+    onKeyPress: (e) => e.stopPropagation(),
+  };
+
+  const SelectableRow = ({ selected, onSelect, children }) => {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") onSelect();
+        }}
+        className={`w-full rounded-2xl border p-4 text-left transition cursor-pointer select-none ${
+          selected ? "border-[#3C5A7D] bg-[#7BAACB]/[0.08]" : "bg-white hover:bg-[#7BAACB]/[0.08]"
+        }`}
+      >
+        {children}
+      </div>
+    );
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-8">
@@ -108,12 +150,14 @@ export function CheckoutFlow({ item, step, setStep, onStep, onBackToDetails, onF
                     </div>
 
                     <div>
-                      <div className="text-sm font-semibold">Monogram (optional)</div>
+                    <div className="text-sm font-semibold">Monogram (optional)</div>
                       <input
                         value={custom.monogram}
                         onChange={(e) => setCustom((v) => ({ ...v, monogram: e.target.value }))}
                         placeholder="e.g., MAX"
                         className="mt-3 w-full max-w-sm rounded-2xl border bg-white px-4 py-3 text-sm outline-none"
+                        maxLength={10}
+                        {...inputGuards}
                       />
                       <div className="mt-2 text-xs text-muted-foreground">Up to 10 characters.</div>
                     </div>
@@ -192,13 +236,7 @@ export function CheckoutFlow({ item, step, setStep, onStep, onBackToDetails, onF
 
                   <div className="mt-6 rounded-3xl border bg-white p-4 shadow-sm">
                     <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => setPayment("card")}
-                        className={`w-full rounded-2xl border p-4 text-left transition ${
-                          payment === "card" ? "border-[#3C5A7D] bg-[#7BAACB]/[0.08]" : "bg-white hover:bg-[#7BAACB]/[0.08]"
-                        }`}
-                      >
+                      <SelectableRow selected={payment === "card"} onSelect={() => setPayment("card")}>
                         <div className="flex items-center gap-3">
                           <div className={`mt-0.5 h-4 w-4 rounded-full border ${payment === "card" ? "bg-black" : "bg-white"}`} />
                           <div className="flex-1">
@@ -212,37 +250,64 @@ export function CheckoutFlow({ item, step, setStep, onStep, onBackToDetails, onF
                             <div className="mt-1 text-xs text-muted-foreground">Visa · Maestro · MasterCard</div>
                           </div>
                         </div>
+                      </SelectableRow>
 
-                        {payment === "card" ? (
-                          <div className="mt-4 grid gap-3">
+                      {payment === "card" ? (
+                        <div className="rounded-2xl border bg-white p-4">
+                          <div className="grid gap-3">
                             <div>
                               <div className="text-xs text-muted-foreground">Card number</div>
                               <div className="mt-2 flex items-center gap-2 rounded-2xl border bg-white px-3 py-3">
-                                <input className="w-full bg-transparent text-sm outline-none" placeholder="4111 1111 1111 1111" />
+                                <input
+                                  value={card.number}
+                                  onChange={(e) => setCard((v) => ({ ...v, number: e.target.value }))}
+                                  className="w-full bg-transparent text-sm outline-none"
+                                  placeholder="4111 1111 1111 1111"
+                                  inputMode="numeric"
+                                  {...inputGuards}
+                                />
                                 <div className="rounded-full border bg-white px-2 py-1 text-[10px] text-muted-foreground">VISA</div>
                               </div>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div>
                                 <div className="text-xs text-muted-foreground">Expiry date</div>
-                                <input className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none" placeholder="MM/YY" />
+                                <input
+                                  value={card.expiry}
+                                  onChange={(e) => setCard((v) => ({ ...v, expiry: e.target.value }))}
+                                  className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none"
+                                  placeholder="MM/YY"
+                                  inputMode="numeric"
+                                  {...inputGuards}
+                                />
                               </div>
                               <div>
                                 <div className="text-xs text-muted-foreground">Security code</div>
-                                <input className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none" placeholder="3 digits" />
+                                <input
+                                  value={card.cvc}
+                                  onChange={(e) => setCard((v) => ({ ...v, cvc: e.target.value }))}
+                                  className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none"
+                                  placeholder="3 digits"
+                                  inputMode="numeric"
+                                  {...inputGuards}
+                                />
                               </div>
                             </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">Name on card</div>
+                              <input
+                                value={card.name}
+                                onChange={(e) => setCard((v) => ({ ...v, name: e.target.value }))}
+                                className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none"
+                                placeholder="MAX MURZAK"
+                                {...inputGuards}
+                              />
+                            </div>
                           </div>
-                        ) : null}
-                      </button>
+                        </div>
+                      ) : null}
 
-                      <button
-                        type="button"
-                        onClick={() => setPayment("gpay")}
-                        className={`w-full rounded-2xl border p-4 text-left transition ${
-                          payment === "gpay" ? "border-[#3C5A7D] bg-[#7BAACB]/[0.08]" : "bg-white hover:bg-[#7BAACB]/[0.08]"
-                        }`}
-                      >
+                      <SelectableRow selected={payment === "gpay"} onSelect={() => setPayment("gpay")}>
                         <div className="flex items-center gap-3">
                           <div className={`mt-0.5 h-4 w-4 rounded-full border ${payment === "gpay" ? "bg-black" : "bg-white"}`} />
                           <div className="flex-1">
@@ -256,15 +321,9 @@ export function CheckoutFlow({ item, step, setStep, onStep, onBackToDetails, onF
                             <div className="mt-1 text-xs text-muted-foreground">Fast checkout on supported devices.</div>
                           </div>
                         </div>
-                      </button>
+                      </SelectableRow>
 
-                      <button
-                        type="button"
-                        onClick={() => setPayment("wire")}
-                        className={`w-full rounded-2xl border p-4 text-left transition ${
-                          payment === "wire" ? "border-[#3C5A7D] bg-[#7BAACB]/[0.08]" : "bg-white hover:bg-[#7BAACB]/[0.08]"
-                        }`}
-                      >
+                      <SelectableRow selected={payment === "wire"} onSelect={() => setPayment("wire")}>
                         <div className="flex items-center gap-3">
                           <div className={`mt-0.5 h-4 w-4 rounded-full border ${payment === "wire" ? "bg-black" : "bg-white"}`} />
                           <div className="flex-1">
@@ -277,19 +336,20 @@ export function CheckoutFlow({ item, step, setStep, onStep, onBackToDetails, onF
                             </div>
                           </div>
                         </div>
+                      </SelectableRow>
 
-                        {payment === "wire" ? (
-                          <div className="mt-4">
-                            <div className="text-xs text-muted-foreground">Email address</div>
-                            <input
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="you@example.com"
-                              className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none"
-                            />
-                          </div>
-                        ) : null}
-                      </button>
+                      {payment === "wire" ? (
+                        <div className="rounded-2xl border bg-white p-4">
+                          <div className="text-xs text-muted-foreground">Email address</div>
+                          <input
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="you@example.com"
+                            className="mt-2 w-full rounded-2xl border bg-white px-3 py-3 text-sm outline-none"
+                            {...inputGuards}
+                          />
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="mt-6 text-xs text-muted-foreground">Charges are simulated in the prototype.</div>

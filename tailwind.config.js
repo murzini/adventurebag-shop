@@ -6,6 +6,13 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // Mobile-first helpers:
+      // - xs: smallest modern phones (360px)
+      // - phone: typical iPhone/Samsung base width (390px)
+      screens: {
+        xs: "360px",
+        phone: "390px",
+      },
       colors: {
         muted: {
           DEFAULT: "#6B7280",
