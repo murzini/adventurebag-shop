@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env
+.env.*
+.DS_Store
+.vercel
+.env.local
+*.log
+Shop.zip
+components/prototype/ResponsiveDebug.jsx
