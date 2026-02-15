@@ -15,7 +15,6 @@ import { SearchPage } from "../components/prototype/SearchPage";
 import { DetailsPage } from "../components/prototype/DetailsPage";
 import { CheckoutFlow } from "../components/prototype/CheckoutFlow";
 import { ThankYouPage } from "../components/prototype/ThankYouPage";
-import { ResponsiveDebug } from "../components/prototype/ResponsiveDebug";
 
 export default function ShopPage() {
   const [catalog, setCatalog] = useState([]);
@@ -241,7 +240,6 @@ export default function ShopPage() {
     return (
       <div className="min-h-screen bg-[#f6f7fb]">
         <TopBar stageLabel="Shop" tokenLabel="" onGoHome={goHome} />
-        {debug ? <ResponsiveDebug /> : null}
         {TourShield}
         <div className="mx-auto max-w-6xl px-4 py-24 text-sm text-muted-foreground">
           Loading catalog…
@@ -253,7 +251,6 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen bg-[#f6f7fb]">
       <TopBar stageLabel="Shop" tokenLabel="" onGoHome={goHome} />
-      {debug ? <ResponsiveDebug /> : null}
       {TourShield}
 
       <div className="mx-auto max-w-6xl px-4 py-6">
