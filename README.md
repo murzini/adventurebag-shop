@@ -1,9 +1,9 @@
-# AdventureBag — Student app (Milestone 2 + Milestone 3 Student flow)
+# AdventureBag - Shop app
 
-This repo contains the **Student** application:
-- Preserves the full Milestone 2 scope and UI/behavior.
-- Adds the Milestone 3 **prototype-aligned** A/B testing flow triggered by **“Pick a hypothesis”** on the Welcome screen.
-- No Coach↔Student linking in this version (hardcoded/prototype data).
+This repo contains the standalone **Shop** application:
+- Renders Landing, Search, Details, Checkout, and Thank You prototype flows.
+- Consumes Shop CMS configuration from Coach via `COACH_BASE_URL`.
+- Supports Student tour mode via query parameters (`tour`, `step`, `sku`).
 
 ## Run locally
 ```bash
@@ -11,7 +11,10 @@ npm install
 npm run dev
 ```
 
+## Environment
+- `COACH_BASE_URL` must point to the Coach base domain (without trailing slash).
+
 ## Deploy to Vercel
 - Framework: Next.js
-- Node: 18 (see `.nvmrc`)
+- Node: 20.x
 - Root Directory: repo root
