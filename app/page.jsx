@@ -17,19 +17,51 @@ import { CheckoutFlow } from "../components/prototype/CheckoutFlow";
 import { ThankYouPage } from "../components/prototype/ThankYouPage";
 import { ResponsiveDebug } from "../components/prototype/ResponsiveDebug";
 
-// Standalone Shop view: no Student session, no token, just the shop prototype.
 export default function ShopPage() {
   const [catalog, setCatalog] = useState([]);
   const [route, setRoute] = useState(routes.landing);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [checkoutStep, setCheckoutStep] = useState(1);
+
+  // IMPORTANT: CheckoutFlow expects "customize" | "delivery" | "pay"
+  const [checkoutStep, setCheckoutStep] = useState("customize");
+
   const [debug, setDebug] = useState(false);
   const [landingConfig, setLandingConfig] = useState(null);
   const [searchConfig, setSearchConfig] = useState(null);
   const [detailsConfig, setDetailsConfig] = useState(null);
 
+  // Tour Mode (Milestone 8): render real Shop UI, but make it view-only.
+  // Enabled via: ?tour=1&step=landing|search|details|customize|delivery|payment&sku=AB-000001
+  const [isTour, setIsTour] = useState(false);
+  const [tourStep, setTourStep] = useState("landing");
+  const [tourSku, setTourSku] = useState(null);
+
+  useEffect(() => {
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      setIsTour(qs.get("tour") === "1");
+      setTourStep(qs.get("step") || "landing");
+      setTourSku(qs.get("sku"));
+    } catch {
+      setIsTour(false);
+      setTourStep("landing");
+      setTourSku(null);
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
+
+    const pickPreferred = (items) => {
+      if (isTour && tourSku) {
+        return (
+          items.find((x) => String(x?.sku || x?.SKU || "") === String(tourSku)) ||
+          items[0] ||
+          null
+        );
+      }
+      return items[0] || null;
+    };
 
     const load = async () => {
       try {
@@ -37,19 +69,26 @@ export default function ShopPage() {
         const data = await res.json();
         const items = data?.items || [];
         if (!alive) return;
+
         if (items.length) {
           setCatalog(items);
-          setSelectedItem((prev) => prev || items[0] || null);
+          setSelectedItem((prev) =>
+            isTour ? pickPreferred(items) : prev || pickPreferred(items)
+          );
         } else {
           const fallback = buildCatalogItemsFallback();
           setCatalog(fallback);
-          setSelectedItem((prev) => prev || fallback[0] || null);
+          setSelectedItem((prev) =>
+            isTour ? pickPreferred(fallback) : prev || pickPreferred(fallback)
+          );
         }
       } catch {
         if (!alive) return;
         const fallback = buildCatalogItemsFallback();
         setCatalog(fallback);
-        setSelectedItem((prev) => prev || fallback[0] || null);
+        setSelectedItem((prev) =>
+          isTour ? pickPreferred(fallback) : prev || pickPreferred(fallback)
+        );
       }
     };
 
@@ -57,10 +96,49 @@ export default function ShopPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [isTour, tourSku]);
 
   useEffect(() => {
-    // Details page CMS (optional). If unreachable, DetailsPage uses built-in defaults.
+    if (!isTour) return;
+
+    const step = String(tourStep || "landing").toLowerCase();
+
+    if (step === "landing") {
+      setCheckoutStep("customize");
+      setRoute(routes.landing);
+      return;
+    }
+    if (step === "search") {
+      setCheckoutStep("customize");
+      setRoute(routes.search);
+      return;
+    }
+    if (step === "details") {
+      setCheckoutStep("customize");
+      setRoute(routes.details);
+      return;
+    }
+    if (step === "customize") {
+      setCheckoutStep("customize");
+      setRoute(routes.checkout);
+      return;
+    }
+    if (step === "delivery") {
+      setCheckoutStep("delivery");
+      setRoute(routes.checkout);
+      return;
+    }
+    if (step === "payment") {
+      setCheckoutStep("pay");
+      setRoute(routes.checkout);
+      return;
+    }
+
+    setCheckoutStep("customize");
+    setRoute(routes.landing);
+  }, [isTour, tourStep]);
+
+  useEffect(() => {
     let alive = true;
     const load = async () => {
       try {
@@ -80,14 +158,12 @@ export default function ShopPage() {
   }, []);
 
   useEffect(() => {
-    // Search page CMS (optional). If unreachable, SearchPage uses built-in defaults.
     let alive = true;
     const load = async () => {
       try {
         const res = await fetch("/api/search-config", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (!alive) return;
-        // This endpoint always returns a merged config.
         setSearchConfig(data || null);
       } catch {
         if (!alive) return;
@@ -101,7 +177,6 @@ export default function ShopPage() {
   }, []);
 
   useEffect(() => {
-    // Landing page CMS (optional). If unreachable, the Landing component uses built-in defaults.
     let alive = true;
     const load = async () => {
       try {
@@ -125,24 +200,49 @@ export default function ShopPage() {
   }, []);
 
   useEffect(() => {
-    // Enable overlay for cross-device QA: add ?debug=1
     try {
-      setDebug(new URLSearchParams(window.location.search).get("debug") === "1");
+      const qs = new URLSearchParams(window.location.search);
+      setDebug(!isTour && qs.get("debug") === "1");
     } catch {
       setDebug(false);
     }
-  }, []);
+  }, [isTour]);
 
   const goHome = () => {
-    setCheckoutStep(1);
+    setCheckoutStep("customize");
     setRoute(routes.landing);
   };
+
+  // Blocks all interactions in Tour mode (Student controls navigation via Prev/Next)
+  const TourShield = isTour ? (
+    <div
+      className="fixed inset-0 z-[9999] cursor-default"
+      title="Tour mode: view-only"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onTouchStart={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onKeyDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    />
+  ) : null;
 
   if (!catalog.length || !selectedItem) {
     return (
       <div className="min-h-screen bg-[#f6f7fb]">
         <TopBar stageLabel="Shop" tokenLabel="" onGoHome={goHome} />
-      {debug ? <ResponsiveDebug /> : null}
+        {debug ? <ResponsiveDebug /> : null}
+        {TourShield}
         <div className="mx-auto max-w-6xl px-4 py-24 text-sm text-muted-foreground">
           Loading catalog…
         </div>
@@ -154,6 +254,7 @@ export default function ShopPage() {
     <div className="min-h-screen bg-[#f6f7fb]">
       <TopBar stageLabel="Shop" tokenLabel="" onGoHome={goHome} />
       {debug ? <ResponsiveDebug /> : null}
+      {TourShield}
 
       <div className="mx-auto max-w-6xl px-4 py-6">
         <AnimatePresence mode="wait">
@@ -161,7 +262,9 @@ export default function ShopPage() {
             <motion.div key="landing" {...fade} transition={{ duration: 0.2 }}>
               <Landing
                 config={landingConfig}
-                onStart={() => setRoute(routes.search)}
+                onStart={() => {
+                  if (!isTour) setRoute(routes.search);
+                }}
               />
             </motion.div>
           )}
@@ -172,10 +275,14 @@ export default function ShopPage() {
                 items={catalog}
                 config={searchConfig}
                 onSelect={(item) => {
-                  setSelectedItem(item);
-                  setRoute(routes.details);
+                  if (!isTour) {
+                    setSelectedItem(item);
+                    setRoute(routes.details);
+                  }
                 }}
-                onBack={goHome}
+                onBack={() => {
+                  if (!isTour) goHome();
+                }}
               />
             </motion.div>
           )}
@@ -185,10 +292,14 @@ export default function ShopPage() {
               <DetailsPage
                 item={selectedItem}
                 config={detailsConfig}
-                onBack={() => setRoute(routes.search)}
+                onBack={() => {
+                  if (!isTour) setRoute(routes.search);
+                }}
                 onCheckout={() => {
-                  setCheckoutStep(1);
-                  setRoute(routes.checkout);
+                  if (!isTour) {
+                    setCheckoutStep("customize");
+                    setRoute(routes.checkout);
+                  }
                 }}
               />
             </motion.div>
@@ -199,19 +310,27 @@ export default function ShopPage() {
               <CheckoutFlow
                 item={selectedItem}
                 step={checkoutStep}
-                setStep={setCheckoutStep}
+                setStep={isTour ? () => {} : setCheckoutStep}
                 onBackToDetails={() => {
-                  setCheckoutStep(1);
-                  setRoute(routes.details);
+                  if (!isTour) {
+                    setCheckoutStep("customize");
+                    setRoute(routes.details);
+                  }
                 }}
-                onFinish={() => setRoute(routes.thankyou)}
+                onFinish={() => {
+                  if (!isTour) setRoute(routes.thankyou);
+                }}
               />
             </motion.div>
           )}
 
           {route === routes.thankyou && (
             <motion.div key="thankyou" {...fade} transition={{ duration: 0.2 }}>
-              <ThankYouPage onGoHome={goHome} />
+              <ThankYouPage
+                onGoHome={() => {
+                  if (!isTour) goHome();
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import { fetchCoachJson } from "@/lib/server/coachProxy";
 
 const DEFAULT_CONFIG = {
   ctaCaption: "Add to cart",
@@ -7,26 +8,26 @@ const DEFAULT_CONFIG = {
 };
 
 export async function GET() {
-  const base = process.env.COACH_BASE_URL;
-  if (!base) {
-    return Response.json({ ok: false, error: "Missing COACH_BASE_URL" }, { status: 500 });
-  }
-
   try {
-    const res = await fetch(`${base.replace(/\/$/, "")}/api/coach/shop-config/details`, {
-      cache: "no-store",
-    });
-
-    const data = await res.json();
+    const data = await fetchCoachJson("/api/coach/shop-config/details");
     const merged = { ...DEFAULT_CONFIG, ...(data || {}) };
     merged.ctaCaption = String(merged.ctaCaption || DEFAULT_CONFIG.ctaCaption);
     merged.ctaHelperText = String(merged.ctaHelperText || DEFAULT_CONFIG.ctaHelperText);
     merged.imageTipText = String(merged.imageTipText || DEFAULT_CONFIG.imageTipText);
 
-    return Response.json(merged, { status: 200, headers: { "Cache-Control": "no-store" } });
+    return Response.json(
+      { ok: true, degraded: false, ...merged },
+      { status: 200, headers: { "Cache-Control": "no-store" } }
+    );
   } catch (e) {
     return Response.json(
-      { ok: true, ...DEFAULT_CONFIG, note: "Falling back to defaults; Coach unreachable.", error: String(e) },
+      {
+        ok: false,
+        degraded: true,
+        ...DEFAULT_CONFIG,
+        note: "Falling back to defaults; Coach unreachable.",
+        error: String(e?.message || e),
+      },
       { status: 200, headers: { "Cache-Control": "no-store" } }
     );
   }
