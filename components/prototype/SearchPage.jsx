@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, SlidersHorizontal } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
 import { fade } from "../../lib/prototype/fade";
-export function SearchPage({ items, onSelect, onOpenDetails }) {
+export function SearchPage({ items, onSelect, onOpenDetails, config }) {
   // Backward compatibility:
   // - app/shop uses `onSelect(item)`
   // - older callers used `onOpenDetails(id)`
@@ -25,6 +25,27 @@ export function SearchPage({ items, onSelect, onOpenDetails }) {
   const [priceBand, setPriceBand] = React.useState([]);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
+  const pageTitle = config?.pageTitle || "Search";
+  const pageSubtitle =
+    config?.pageSubtitle ||
+    "Browse backpacks. Filters work on metadata (audience, purpose, material, price band).";
+  const filtersTitle = config?.filtersTitle || "Filters";
+  const filtersConfig = config?.filters || {};
+  const visibleCount =
+    Number.isFinite(Number(config?.visibleCount)) && Number(config?.visibleCount) > 0
+      ? Number(config.visibleCount)
+      : null;
+
+  const isFilterEnabled = (key) => {
+    const enabled = filtersConfig?.[key]?.enabled;
+    return enabled === undefined ? true : Boolean(enabled);
+  };
+
+  const filterLabel = (key, fallback) => {
+    const label = filtersConfig?.[key]?.label;
+    return String(label || fallback);
+  };
+
 
   const toggle = (arr, val, setter) => {
     setter(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
@@ -32,18 +53,20 @@ export function SearchPage({ items, onSelect, onOpenDetails }) {
 
   const filteredItems = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((it) => {
+    const base = items.filter((it) => {
       if (q) {
         const hay = `${it.name} ${it.description || ""} ${it.color || ""} ${it.material || ""} ${it.purpose || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      if (audience.length && !audience.includes(it.audience)) return false;
-      if (purpose.length && !purpose.includes(it.purpose)) return false;
-      if (material.length && !material.includes(it.material)) return false;
-      if (priceBand.length && !priceBand.includes(it.priceBand)) return false;
+      if (isFilterEnabled("audience") && audience.length && !audience.includes(it.audience)) return false;
+      if (isFilterEnabled("purpose") && purpose.length && !purpose.includes(it.purpose)) return false;
+      if (isFilterEnabled("material") && material.length && !material.includes(it.material)) return false;
+      if (isFilterEnabled("priceBand") && priceBand.length && !priceBand.includes(it.priceBand)) return false;
       return true;
     });
-  }, [items, query, audience, purpose, material, priceBand]);
+    if (visibleCount) return base.slice(0, visibleCount);
+    return base;
+  }, [items, query, audience, purpose, material, priceBand, visibleCount]);
 
 
   const getThumbSrc = (it) => {
@@ -85,9 +108,9 @@ return (
       <motion.div {...fade} transition={{ duration: 0.25 }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-3xl font-semibold tracking-tight">Search</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">{pageTitle}</h2>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Browse backpacks. Filters work on metadata (audience, purpose, material, price band).
+              {pageSubtitle}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -114,13 +137,21 @@ return (
           <div className="hidden lg:block lg:col-span-3">
             <Card className="rounded-3xl shadow-sm">
 	              <div className="px-6 pt-6 pb-2">
-	                <div className="text-base font-semibold">Filters</div>
+	                <div className="text-base font-semibold">{filtersTitle}</div>
 	              </div>
               <CardContent className="space-y-4">
-                <FilterGroup title="Audience" values={optionSets.audience} selected={audience} onToggle={(v) => toggle(audience, v, setAudience)} />
-                <FilterGroup title="Purpose" values={optionSets.purpose} selected={purpose} onToggle={(v) => toggle(purpose, v, setPurpose)} />
-                <FilterGroup title="Material" values={optionSets.material} selected={material} onToggle={(v) => toggle(material, v, setMaterial)} />
-                <FilterGroup title="Price" values={optionSets.priceBand} selected={priceBand} onToggle={(v) => toggle(priceBand, v, setPriceBand)} />
+                {isFilterEnabled("audience") ? (
+                  <FilterGroup title={filterLabel("audience", "Audience")} values={optionSets.audience} selected={audience} onToggle={(v) => toggle(audience, v, setAudience)} />
+                ) : null}
+                {isFilterEnabled("purpose") ? (
+                  <FilterGroup title={filterLabel("purpose", "Purpose")} values={optionSets.purpose} selected={purpose} onToggle={(v) => toggle(purpose, v, setPurpose)} />
+                ) : null}
+                {isFilterEnabled("material") ? (
+                  <FilterGroup title={filterLabel("material", "Material")} values={optionSets.material} selected={material} onToggle={(v) => toggle(material, v, setMaterial)} />
+                ) : null}
+                {isFilterEnabled("priceBand") ? (
+                  <FilterGroup title={filterLabel("priceBand", "Price")} values={optionSets.priceBand} selected={priceBand} onToggle={(v) => toggle(priceBand, v, setPriceBand)} />
+                ) : null}
                 <div className="pt-2">
 	                  <button
 	                    type="button"
@@ -214,13 +245,21 @@ return (
 
       <Card className="rounded-3xl shadow-sm">
         <div className="px-6 pt-6 pb-2">
-          <div className="text-base font-semibold">Refine results</div>
+          <div className="text-base font-semibold">{filtersTitle}</div>
         </div>
         <CardContent className="space-y-4">
-          <FilterGroup title="Audience" values={optionSets.audience} selected={audience} onToggle={(v) => toggle(audience, v, setAudience)} />
-          <FilterGroup title="Purpose" values={optionSets.purpose} selected={purpose} onToggle={(v) => toggle(purpose, v, setPurpose)} />
-          <FilterGroup title="Material" values={optionSets.material} selected={material} onToggle={(v) => toggle(material, v, setMaterial)} />
-          <FilterGroup title="Price" values={optionSets.priceBand} selected={priceBand} onToggle={(v) => toggle(priceBand, v, setPriceBand)} />
+          {isFilterEnabled("audience") ? (
+            <FilterGroup title={filterLabel("audience", "Audience")} values={optionSets.audience} selected={audience} onToggle={(v) => toggle(audience, v, setAudience)} />
+          ) : null}
+          {isFilterEnabled("purpose") ? (
+            <FilterGroup title={filterLabel("purpose", "Purpose")} values={optionSets.purpose} selected={purpose} onToggle={(v) => toggle(purpose, v, setPurpose)} />
+          ) : null}
+          {isFilterEnabled("material") ? (
+            <FilterGroup title={filterLabel("material", "Material")} values={optionSets.material} selected={material} onToggle={(v) => toggle(material, v, setMaterial)} />
+          ) : null}
+          {isFilterEnabled("priceBand") ? (
+            <FilterGroup title={filterLabel("priceBand", "Price")} values={optionSets.priceBand} selected={priceBand} onToggle={(v) => toggle(priceBand, v, setPriceBand)} />
+          ) : null}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               type="button"

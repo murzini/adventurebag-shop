@@ -13,7 +13,7 @@ export async function GET() {
       );
     }
 
-    const upstream = await fetch(`${COACH_BASE_URL}/api/coach/shop-config/landing`, {
+    const upstream = await fetch(`${COACH_BASE_URL}/api/shop/landing-config`, {
       cache: "no-store",
     });
     const data = await upstream.json().catch(() => ({}));

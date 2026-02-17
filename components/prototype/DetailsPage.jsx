@@ -9,7 +9,7 @@ import { BackpackThumb } from "./Shared";
 
 // Some callers use `onBuy`, others use `onCheckout`.
 // Support both so the CTA never becomes a no-op.
-export function DetailsPage({ item, onBack, onBuy, onCheckout }) {
+export function DetailsPage({ item, onBack, onBuy, onCheckout, config }) {
   const handleCheckout = onBuy || onCheckout;
   if (!item) return null;
 
@@ -75,6 +75,12 @@ export function DetailsPage({ item, onBack, onBuy, onCheckout }) {
   };
 
   const showGallery = gallery.length > 1;
+
+  const ctaCaption = config?.ctaCaption || "Add to cart";
+  const ctaHelperText =
+    config?.ctaHelperText || "Prototype checkout. No payment, no shipping, no account required.";
+  const imageTipText =
+                    {imageTipText}
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-24 pt-6">
@@ -153,7 +159,7 @@ export function DetailsPage({ item, onBack, onBuy, onCheckout }) {
 
                 {showGallery && (
                   <div className="mt-3 text-xs text-muted-foreground">
-                    Tip: click thumbnails to switch · click the big image to open full size
+                    {imageTipText}
                   </div>
                 )}
               </div>
@@ -196,11 +202,11 @@ export function DetailsPage({ item, onBack, onBuy, onCheckout }) {
                   className="mt-2 rounded-2xl bg-[#0B1B33] hover:bg-[#0B1B33]/90"
                   onClick={() => handleCheckout?.(item)}
                 >
-                  Add to cart
+                  {ctaCaption}
                 </Button>
 
                 <div className="text-xs text-muted-foreground">
-                  Prototype checkout. No payment, no shipping, no account required.
+                  {ctaHelperText}
                 </div>
               </div>
             </div>
