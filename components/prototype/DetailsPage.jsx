@@ -80,7 +80,7 @@ export function DetailsPage({ item, onBack, onBuy, onCheckout, config }) {
   const ctaHelperText =
     config?.ctaHelperText || "Prototype checkout. No payment, no shipping, no account required.";
   const imageTipText =
-                    {imageTipText}
+    config?.imageTipText || "Tip: click thumbnails to switch · click the big image to open full size";
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-24 pt-6">
