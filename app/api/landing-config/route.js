@@ -1,4 +1,6 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { NextResponse } from "next/server";
 
@@ -25,7 +27,7 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ ok: true, config: data });
+    return NextResponse.json({ ok: true, config: data }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: String(e?.message || e) },
